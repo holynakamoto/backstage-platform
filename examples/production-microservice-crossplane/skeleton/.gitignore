@@ -1,0 +1,15 @@
+node_modules/
+*.log
+.DS_Store
+.env
+.venv/
+__pycache__/
+*.pyc
+dist/
+build/
+*.swp
+*.swo
+.vscode/
+.idea/
+kubeconfig.yaml
+

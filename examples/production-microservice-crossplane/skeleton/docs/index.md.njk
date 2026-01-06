@@ -1,0 +1,85 @@
+# {{ values.name }}
+
+{{ values.description }}
+
+## Architecture
+
+This microservice is deployed using a modern cloud-native architecture:
+
+### Infrastructure Components
+
+- **ECS Cluster**: Container orchestration platform
+- **Application Load Balancer**: Distributes incoming traffic
+- **VPC**: Isolated network environment
+{% if values.database %}- **RDS PostgreSQL**: Managed relational database{% endif %}
+{% if values.cache %}- **ElastiCache Redis**: In-memory caching{% endif %}
+
+### Application Components
+
+- **Kubernetes Deployment**: Manages application pods
+- **Service**: Exposes the application internally
+- **Ingress**: External access point
+
+## Deployment Flow
+
+1. **Infrastructure Provisioning**: Crossplane provisions AWS resources based on claim
+2. **Image Build**: CI pipeline builds and pushes Docker image
+3. **Application Deployment**: Kubernetes manifests deploy the application
+4. **Health Checks**: Liveness and readiness probes ensure service health
+
+## Configuration
+
+### Environment Variables
+
+- `PORT`: Service port (default: 8080)
+- `ENVIRONMENT`: Deployment environment (dev/staging/prod)
+{% if values.database %}- `DATABASE_URL`: PostgreSQL connection string{% endif %}
+{% if values.cache %}- `REDIS_URL`: Redis endpoint{% endif %}
+
+### Resource Limits
+
+**Development**:
+- CPU: 0.5 cores
+- Memory: 1Gi
+- Replicas: 1-3
+
+**Production**:
+- CPU: 2 cores
+- Memory: 4Gi
+- Replicas: 2-10
+
+## Troubleshooting
+
+### Check Pod Status
+
+```bash
+kubectl get pods -l app={{ values.name }}
+```
+
+### View Logs
+
+```bash
+kubectl logs -l app={{ values.name }} --tail=100
+```
+
+### Check Crossplane Resources
+
+```bash
+kubectl get compositeresource -l crossplane.io/composite={{ values.name }}
+```
+
+### Database Connection Issues
+
+{% if values.database %}
+```bash
+# Check database credentials secret
+kubectl get secret {{ values.name }}-db-credentials -o yaml
+```
+{% else %}
+Database is not configured for this service.
+{% endif %}
+
+## Runbooks
+
+See `docs/runbook.md` for operational procedures.
+

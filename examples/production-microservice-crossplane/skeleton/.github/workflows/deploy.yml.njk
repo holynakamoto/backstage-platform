@@ -1,0 +1,84 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+  push:
+    branches:
+      - main
+
+env:
+  KUBERNETES_VERSION: '1.28'
+
+jobs:
+  deploy-infrastructure:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'dev' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: ${{ env.KUBERNETES_VERSION }}
+
+      - name: Configure kubectl
+        run: |
+          echo "${{ secrets.KUBECONFIG }}" | base64 -d > kubeconfig.yaml
+          export KUBECONFIG=kubeconfig.yaml
+
+      - name: Apply Crossplane Claim
+        run: |
+          export KUBECONFIG=kubeconfig.yaml
+          ENV=${{ github.event.inputs.environment || 'dev' }}
+          kubectl apply -f crossplane/claim-${ENV}.yaml
+          
+      - name: Wait for Crossplane resources
+        run: |
+          export KUBECONFIG=kubeconfig.yaml
+          ENV=${{ github.event.inputs.environment || 'dev' }}
+          kubectl wait --for=condition=Ready \
+            --timeout=300s \
+            compositeresource.claim.apiextensions.crossplane.io/{{ values.name }}-${ENV} || true
+
+  deploy-application:
+    needs: deploy-infrastructure
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'dev' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: ${{ env.KUBERNETES_VERSION }}
+
+      - name: Configure kubectl
+        run: |
+          echo "${{ secrets.KUBECONFIG }}" | base64 -d > kubeconfig.yaml
+          export KUBECONFIG=kubeconfig.yaml
+
+      - name: Apply Kubernetes manifests
+        run: |
+          export KUBECONFIG=kubeconfig.yaml
+          kubectl apply -f k8s/
+
+      - name: Wait for deployment
+        run: |
+          export KUBECONFIG=kubeconfig.yaml
+          kubectl rollout status deployment/{{ values.name }} -n default --timeout=300s
+
+      - name: Run smoke tests
+        run: |
+          export KUBECONFIG=kubeconfig.yaml
+          SERVICE_URL=$(kubectl get service {{ values.name }} -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+          curl -f http://${SERVICE_URL}/health || exit 1
+

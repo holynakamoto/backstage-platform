@@ -1,0 +1,168 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: microservices.example.com
+spec:
+  group: example.com
+  names:
+    kind: Microservice
+    plural: microservices
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                environment:
+                  type: string
+                runtime:
+                  type: string
+                region:
+                  type: string
+                resources:
+                  type: object
+                  properties:
+                    cpu:
+                      type: string
+                    memory:
+                      type: string
+                scaling:
+                  type: object
+                  properties:
+                    minReplicas:
+                      type: integer
+                    maxReplicas:
+                      type: integer
+                database:
+                  type: object
+                  properties:
+                    enabled:
+                      type: boolean
+                    engine:
+                      type: string
+                cache:
+                  type: object
+                  properties:
+                    enabled:
+                      type: boolean
+              required:
+                - environment
+                - runtime
+                - region
+          required:
+            - spec
+---
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: microservice-aws-{{ values.runtime }}
+spec:
+  writeConnectionSecretsToRef:
+    name: {{ values.name }}-connection
+    namespace: default
+  compositeTypeRef:
+    apiVersion: example.com/v1alpha1
+    kind: Microservice
+  resources:
+    # VPC
+    - name: vpc
+      base:
+        apiVersion: ec2.aws.crossplane.io/v1alpha1
+        kind: VPC
+        spec:
+          forProvider:
+            region: {{ values.region }}
+            cidrBlock: "10.0.0.0/16"
+            enableDnsHostnames: true
+            enableDnsSupport: true
+          providerConfigRef:
+            name: default
+
+    # ECS Cluster
+    - name: ecs-cluster
+      base:
+        apiVersion: ecs.aws.crossplane.io/v1alpha1
+        kind: Cluster
+        spec:
+          forProvider:
+            region: {{ values.region }}
+            name: {{ values.name }}-cluster
+          providerConfigRef:
+            name: default
+
+    # Application Load Balancer
+    - name: alb
+      base:
+        apiVersion: elbv2.aws.crossplane.io/v1alpha1
+        kind: LoadBalancer
+        spec:
+          forProvider:
+            region: {{ values.region }}
+            name: {{ values.name }}-alb
+            scheme: internet-facing
+            type: application
+            subnets:
+              - subnet-ref-1
+              - subnet-ref-2
+          providerConfigRef:
+            name: default
+
+    {% if values.database %}
+    # RDS PostgreSQL Database
+    - name: rds-database
+      base:
+        apiVersion: rds.aws.crossplane.io/v1alpha1
+        kind: DBInstance
+        spec:
+          forProvider:
+            region: {{ values.region }}
+            engine: postgres
+            engineVersion: "15.4"
+            dbInstanceClass: db.t3.micro
+            allocatedStorage: 20
+            masterUsername: admin
+            skipFinalSnapshotBeforeDeletion: true
+          providerConfigRef:
+            name: default
+          writeConnectionSecretsToRef:
+            name: {{ values.name }}-db-credentials
+            namespace: default
+    {% endif %}
+
+    {% if values.cache %}
+    # ElastiCache Redis
+    - name: elasticache
+      base:
+        apiVersion: cache.aws.crossplane.io/v1alpha1
+        kind: ReplicationGroup
+        spec:
+          forProvider:
+            region: {{ values.region }}
+            replicationGroupId: {{ values.name }}-cache
+            description: Redis cache for {{ values.name }}
+            nodeType: cache.t3.micro
+            numCacheClusters: 1
+          providerConfigRef:
+            name: default
+    {% endif %}
+
+    {% if values.observability %}
+    # CloudWatch Log Group
+    - name: cloudwatch-logs
+      base:
+        apiVersion: cloudwatchlogs.aws.crossplane.io/v1alpha1
+        kind: LogGroup
+        spec:
+          forProvider:
+            region: {{ values.region }}
+            logGroupName: /aws/ecs/{{ values.name }}
+            retentionInDays: 7
+          providerConfigRef:
+            name: default
+    {% endif %}
+

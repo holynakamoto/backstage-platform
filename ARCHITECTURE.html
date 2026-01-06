@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Backstage Platform Architecture</title>
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ 
+            startOnLoad: true,
+            theme: 'default',
+            themeVariables: {
+                primaryColor: '#4A90E2',
+                primaryTextColor: '#fff',
+                primaryBorderColor: '#2E5C8A',
+                lineColor: '#4A90E2',
+                secondaryColor: '#F0F0F0',
+                tertiaryColor: '#E8E8E8'
+            }
+        });
+    </script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #4A90E2;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #555;
+            margin-top: 40px;
+            border-bottom: 2px solid #ddd;
+            padding-bottom: 5px;
+        }
+        .diagram-container {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .mermaid {
+            text-align: center;
+            background: white;
+        }
+        .description {
+            margin-top: 15px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-left: 4px solid #4A90E2;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Backstage Platform Architecture</h1>
+    <p>Interactive architecture diagrams for the Backstage platform with Crossplane integration.</p>
+
+    <h2>High-Level Architecture</h2>
+    <div class="diagram-container">
+        <div class="mermaid">
+graph TB
+    subgraph "Developer Experience"
+        Dev[Developer] -->|Uses| BS[Backstage UI]
+        BS -->|Creates Service| Template[Software Template]
+    end
+    
+    subgraph "Backstage Platform"
+        BS -->|Scaffolds| Git[Git Repository]
+        BS -->|Registers| Catalog[Service Catalog]
+        BS -->|Generates| Docs[TechDocs]
+    end
+    
+    subgraph "CI/CD"
+        Git -->|Triggers| GHA[GitHub Actions]
+        GHA -->|Build| Docker[Docker Image]
+        GHA -->|Scan| Trivy[Security Scan]
+        GHA -->|Deploy| K8s[Kubernetes]
+    end
+    
+    subgraph "Infrastructure as Code"
+        Template -->|Generates| XRD[Crossplane XRD]
+        XRD -->|Provisions| AWS[AWS Resources]
+        AWS -->|Creates| VPC[VPC]
+        AWS -->|Creates| RDS[RDS]
+        AWS -->|Creates| ECS[ECS/EKS]
+        AWS -->|Creates| ALB[Load Balancer]
+        AWS -->|Creates| Cache[ElastiCache]
+    end
+    
+    subgraph "Running Application"
+        K8s -->|Deploys| Pod[Application Pods]
+        Pod -->|Connects| RDS
+        Pod -->|Connects| Cache
+        ALB -->|Routes| Pod
+    end
+    
+    subgraph "Observability"
+        Pod -->|Logs| CW[CloudWatch]
+        Pod -->|Metrics| Prom[Prometheus]
+        CW --> Grafana[Grafana]
+        Prom --> Grafana
+    end
+        </div>
+        <div class="description">
+            <strong>High-Level Architecture:</strong> Shows the complete flow from developer action through Backstage, 
+            CI/CD, infrastructure provisioning, and observability.
+        </div>
+    </div>
+
+    <h2>Crossplane Resource Flow</h2>
+    <div class="diagram-container">
+        <div class="mermaid">
+graph LR
+    subgraph "Developer Action"
+        User[Developer] -->|Creates via Backstage| Claim[Microservice Claim]
+    end
+    
+    subgraph "Crossplane Control Plane"
+        Claim -->|Triggers| XR[Composite Resource]
+        XR -->|Uses| Comp[Composition]
+        Comp -->|Creates| MR[Managed Resources]
+    end
+    
+    subgraph "AWS Provider"
+        MR -->|Provisions| VPC[VPC]
+        MR -->|Provisions| SG[Security Groups]
+        MR -->|Provisions| SUB[Subnets]
+        MR -->|Provisions| RDS[RDS Instance]
+        MR -->|Provisions| EC[ElastiCache]
+        MR -->|Provisions| ECS[ECS Cluster]
+        MR -->|Provisions| ALB[Load Balancer]
+    end
+    
+    subgraph "AWS Cloud"
+        VPC
+        SG
+        SUB
+        RDS
+        EC
+        ECS
+        ALB
+    end
+        </div>
+        <div class="description">
+            <strong>Crossplane Resource Flow:</strong> Demonstrates how a developer's claim triggers 
+            Crossplane to provision AWS resources through managed resources.
+        </div>
+    </div>
+
+    <h2>Service Creation Flow</h2>
+    <div class="diagram-container">
+        <div class="mermaid">
+sequenceDiagram
+    participant Dev as Developer
+    participant BS as Backstage
+    participant GH as GitHub
+    participant GHA as GitHub Actions
+    participant CP as Crossplane
+    participant AWS as AWS
+    participant K8s as Kubernetes
+    
+    Dev->>BS: Create new service
+    BS->>BS: Scaffold from template
+    BS->>GH: Create repository
+    BS->>BS: Register in catalog
+    
+    GH->>GHA: Push triggers CI
+    GHA->>GHA: Run tests
+    GHA->>GHA: Build Docker image
+    GHA->>GHA: Security scan
+    GHA->>GH: Push image to registry
+    
+    GHA->>CP: Apply Crossplane claim
+    CP->>AWS: Provision VPC
+    CP->>AWS: Provision RDS
+    CP->>AWS: Provision ElastiCache
+    CP->>AWS: Provision ECS/ALB
+    AWS-->>CP: Resources ready
+    
+    GHA->>K8s: Deploy application
+    K8s->>K8s: Create pods
+    K8s->>AWS: Connect to RDS
+    K8s->>AWS: Connect to ElastiCache
+    AWS-->>Dev: Service live!
+        </div>
+        <div class="description">
+            <strong>Service Creation Flow:</strong> Sequence diagram showing the step-by-step process 
+            of creating a service from Backstage template to running application.
+        </div>
+    </div>
+
+    <h2>Payment Service Architecture</h2>
+    <div class="diagram-container">
+        <div class="mermaid">
+graph TB
+    subgraph "External"
+        User[End User]
+        Stripe[Stripe API]
+    end
+    
+    subgraph "AWS - us-west-2"
+        subgraph "VPC"
+            subgraph "Public Subnets"
+                ALB[Application Load Balancer]
+            end
+            
+            subgraph "Private Subnets"
+                subgraph "ECS/EKS"
+                    Pod1[Payment Service Pod 1]
+                    Pod2[Payment Service Pod 2]
+                    Pod3[Payment Service Pod 3]
+                end
+                
+                RDS[(PostgreSQL RDS)]
+                EC[(Redis ElastiCache)]
+            end
+        end
+        
+        CW[CloudWatch Logs]
+    end
+    
+    User -->|HTTPS| ALB
+    ALB -->|Health Check| Pod1
+    ALB -->|Load Balance| Pod1
+    ALB -->|Load Balance| Pod2
+    ALB -->|Load Balance| Pod3
+    
+    Pod1 -->|Query| RDS
+    Pod2 -->|Query| RDS
+    Pod3 -->|Query| RDS
+    
+    Pod1 -->|Cache| EC
+    Pod2 -->|Cache| EC
+    Pod3 -->|Cache| EC
+    
+    Pod1 -->|Process Payment| Stripe
+    Pod2 -->|Process Payment| Stripe
+    Pod3 -->|Process Payment| Stripe
+    
+    Pod1 -->|Logs| CW
+    Pod2 -->|Logs| CW
+    Pod3 -->|Logs| CW
+        </div>
+        <div class="description">
+            <strong>Payment Service Architecture:</strong> Detailed architecture of the payments-service 
+            showing network topology, pod distribution, and external integrations.
+        </div>
+    </div>
+
+    <h2>Component Relationships</h2>
+    <div class="diagram-container">
+        <div class="mermaid">
+graph LR
+    subgraph "Backstage Components"
+        Catalog[Service Catalog]
+        Templates[Software Templates]
+        TechDocs[TechDocs]
+        Search[Search]
+    end
+    
+    subgraph "Services"
+        Demo[Demo Service]
+        Payments[Payments Service]
+        Future[Future Services...]
+    end
+    
+    subgraph "Infrastructure"
+        CP[Crossplane]
+        AWS[AWS Resources]
+    end
+    
+    Templates -->|Creates| Demo
+    Templates -->|Creates| Payments
+    Templates -->|Creates| Future
+    
+    Demo -->|Registered in| Catalog
+    Payments -->|Registered in| Catalog
+    Future -->|Registered in| Catalog
+    
+    Demo -->|Documented in| TechDocs
+    Payments -->|Documented in| TechDocs
+    Future -->|Documented in| TechDocs
+    
+    Catalog -->|Searchable via| Search
+    
+    Payments -->|Provisions via| CP
+    Future -->|Provisions via| CP
+    CP -->|Manages| AWS
+        </div>
+        <div class="description">
+            <strong>Component Relationships:</strong> Shows how Backstage components interact with 
+            services and infrastructure provisioning.
+        </div>
+    </div>
+
+    <h2>Technology Stack</h2>
+    <div class="diagram-container">
+        <div class="mermaid">
+mindmap
+  root((Backstage Platform))
+    Frontend
+      React
+      Material UI
+      TypeScript
+    Backend
+      Node.js
+      Express
+      TypeScript
+    Database
+      PostgreSQL
+    Templates
+      Nunjucks
+      YAML
+    Infrastructure
+      Crossplane
+        AWS Provider
+        Compositions
+        XRDs
+      Kubernetes
+        EKS
+        Deployments
+        Services
+      AWS
+        VPC
+        ECS
+        RDS
+        ElastiCache
+        ALB
+        CloudWatch
+    Applications
+      Node.js
+        Express
+        Winston
+        Prometheus Client
+      Python
+        Flask
+        Gunicorn
+      Go
+        net/http
+        logrus
+    CI/CD
+      GitHub Actions
+      Docker
+      Trivy
+      kubectl
+    Monitoring
+      Prometheus
+      Grafana
+      CloudWatch
+      Logs
+        </div>
+        <div class="description">
+            <strong>Technology Stack:</strong> Mindmap showing all technologies used across the platform.
+        </div>
+    </div>
+
+    <div style="margin-top: 40px; padding: 20px; background: white; border-radius: 8px;">
+        <h3>About These Diagrams</h3>
+        <p>These Mermaid diagrams are rendered using the Mermaid.js library. They are also available in 
+        <a href="ARCHITECTURE.md">ARCHITECTURE.md</a> for viewing in Markdown viewers that support Mermaid.</p>
+        <p><strong>To view in Cursor:</strong> Open this HTML file in your browser, or use a Mermaid preview extension.</p>
+    </div>
+</body>
+</html>
+

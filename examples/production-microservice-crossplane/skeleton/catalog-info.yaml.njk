@@ -1,0 +1,18 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: {{ values.name }}
+  description: {{ values.description }}
+  annotations:
+    backstage.io/techdocs-ref: dir:.
+    backstage.io/kubernetes-label-selector: 'app={{ values.name }}'
+spec:
+  type: service
+  owner: {{ values.owner }}
+  lifecycle: {{ values.environment }}
+  providesApis:
+    - {{ values.name }}-api
+  consumesApis:
+    {% if values.database %}- {{ values.name }}-database{% endif %}
+    {% if values.cache %}- {{ values.name }}-cache{% endif %}
+

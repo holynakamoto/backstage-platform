@@ -36,7 +36,8 @@ import { CatalogGraphPage } from '@backstage/plugin-catalog-graph';
 import { RequirePermission } from '@backstage/plugin-permission-react';
 import { catalogEntityCreatePermission } from '@backstage/plugin-catalog-common/alpha';
 import { NotificationsPage } from '@backstage/plugin-notifications';
-import { SignalsDisplay } from '@backstage/plugin-signals';
+// Signals plugin disabled - requires proper auth setup
+// import { SignalsDisplay } from '@backstage/plugin-signals';
 
 const app = createApp({
   apis,
@@ -104,7 +105,7 @@ export default app.createRoot(
   <>
     <AlertDisplay />
     <OAuthRequestDialog />
-    <SignalsDisplay />
+    {/* SignalsDisplay disabled - requires proper auth setup */}
     <AppRouter>
       <Root>{routes}</Root>
     </AppRouter>

@@ -1,0 +1,116 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        if: {{ values.runtime }} == 'nodejs'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Set up Go
+        if: {{ values.runtime }} == 'golang'
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+          cache-dependency-path: go.sum
+
+      - name: Set up Python
+        if: {{ values.runtime }} == 'python'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        {% if values.runtime == 'nodejs' %}run: npm ci{% elif values.runtime == 'golang' %}run: go mod download{% elif values.runtime == 'python' %}run: pip install -r requirements.txt{% endif %}
+
+      - name: Run linter
+        {% if values.runtime == 'nodejs' %}run: npm run lint{% elif values.runtime == 'golang' %}run: golangci-lint run{% elif values.runtime == 'python' %}run: pylint src/{% endif %}
+
+      - name: Run tests
+        {% if values.runtime == 'nodejs' %}run: npm test{% elif values.runtime == 'golang' %}run: go test ./... -v{% elif values.runtime == 'python' %}run: pytest{% endif %}
+
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  build:
+    needs: [test]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix={{ values.name }}-
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Update deployment image tag
+        run: |
+          IMAGE_TAG=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          sed -i "s|image:.*|image: $IMAGE_TAG|" k8s/deployment.yaml
+          git config user.name github-actions
+          git config user.email github-actions[bot]@users.noreply.github.com
+          git add k8s/deployment.yaml
+          git commit -m "Update image tag to ${{ github.sha }}" || exit 0
+          git push
+

@@ -1,0 +1,39 @@
+const express = require('express');
+const app = express();
+const PORT = process.env.PORT || 8080;
+
+app.use(express.json());
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'healthy',
+    service: '{{ values.name }}',
+    environment: process.env.ENVIRONMENT || 'dev',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Root endpoint
+app.get('/', (req, res) => {
+  res.json({
+    service: '{{ values.name }}',
+    description: '{{ values.description }}',
+    version: '1.0.0',
+    environment: process.env.ENVIRONMENT || 'dev'
+  });
+});
+
+// Example API endpoint
+app.get('/api/v1/status', (req, res) => {
+  res.json({
+    service: '{{ values.name }}',
+    status: 'operational',
+    uptime: process.uptime()
+  });
+});
+
+app.listen(PORT, () => {
+  console.log(`{{ values.name }} server running on port ${PORT}`);
+});
+

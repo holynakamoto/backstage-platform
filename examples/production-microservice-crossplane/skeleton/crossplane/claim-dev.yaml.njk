@@ -1,0 +1,20 @@
+apiVersion: example.com/v1alpha1
+kind: Microservice
+metadata:
+  name: {{ values.name }}-dev
+spec:
+  environment: dev
+  runtime: {{ values.runtime }}
+  region: {{ values.region }}
+  resources:
+    cpu: "0.5"
+    memory: "1Gi"
+  scaling:
+    minReplicas: 1
+    maxReplicas: 3
+  database:
+    enabled: {{ values.database }}
+    engine: postgres
+  cache:
+    enabled: {{ values.cache }}
+

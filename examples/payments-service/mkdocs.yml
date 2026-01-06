@@ -1,0 +1,14 @@
+site_name: Payments Service
+site_description: Payment processing microservice documentation
+
+nav:
+  - Home: index.md
+  - Runbook: runbook.md
+
+plugins:
+  - techdocs-core
+
+theme:
+  name: material
+  palette:
+    primary: indigo

@@ -1,7 +1,7 @@
 {
-  "name": "${{ values.name }}",
+  "name": "demo-service",
   "version": "1.0.0",
-  "description": "${{ values.description }}",
+  "description": "A demo Node.js Express website created with Backstage",
   "private": true,
   "main": "server.js",
   "scripts": {
@@ -18,3 +18,4 @@
     "node": ">=18.0.0"
   }
 }
+

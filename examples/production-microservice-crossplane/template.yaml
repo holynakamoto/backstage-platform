@@ -1,0 +1,173 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: production-microservice-crossplane
+  title: Production-Ready Microservice with Crossplane
+  description: A production-ready microservice template with Crossplane infrastructure provisioning, CI/CD, and Kubernetes deployment
+spec:
+  owner: user:guest
+  type: service
+
+  parameters:
+    - title: Service Information
+      required:
+        - name
+        - description
+        - owner
+      properties:
+        name:
+          title: Service Name
+          type: string
+          description: Unique name of the microservice (e.g., user-service)
+          ui:autofocus: true
+          pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'
+          patternErrorMessage: 'Name must be lowercase and may contain hyphens'
+        description:
+          title: Description
+          type: string
+          description: Brief description of the microservice
+        owner:
+          title: Owner
+          type: string
+          description: Owner of the service (e.g., user:guest or team:platform)
+          default: user:guest
+
+    - title: Runtime Selection
+      required:
+        - runtime
+      properties:
+        runtime:
+          title: Runtime
+          type: string
+          description: Programming language runtime
+          enum:
+            - nodejs
+            - golang
+            - python
+          enumNames:
+            - Node.js
+            - Go
+            - Python
+          default: nodejs
+
+    - title: Infrastructure Configuration
+      required:
+        - environment
+        - region
+      properties:
+        environment:
+          title: Environment
+          type: string
+          description: Target deployment environment
+          enum:
+            - dev
+            - staging
+            - prod
+          enumNames:
+            - Development
+            - Staging
+            - Production
+          default: dev
+        region:
+          title: AWS Region
+          type: string
+          description: AWS region for infrastructure provisioning
+          enum:
+            - us-east-1
+            - us-west-2
+            - eu-west-1
+          enumNames:
+            - US East (N. Virginia)
+            - US West (Oregon)
+            - EU (Ireland)
+          default: us-east-1
+        database:
+          title: Provision RDS Database
+          type: boolean
+          description: Create an RDS PostgreSQL database for this service
+          default: true
+        cache:
+          title: Provision ElastiCache
+          type: boolean
+          description: Create an ElastiCache Redis instance for caching
+          default: false
+
+    - title: Features
+      properties:
+        observability:
+          title: Enable Observability
+          type: boolean
+          description: Include CloudWatch, Prometheus, and distributed tracing
+          default: true
+        apiGateway:
+          title: API Gateway Integration
+          type: boolean
+          description: Expose service through API Gateway
+          default: false
+
+    - title: Repository Configuration
+      properties:
+        repoUrl:
+          title: Repository Location
+          type: string
+          description: GitHub repository URL (required for CI/CD)
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts:
+              - github.com
+
+  steps:
+    - id: fetch-base
+      name: Fetch Template Files
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          name: ${{ parameters.name }}
+          description: ${{ parameters.description }}
+          owner: ${{ parameters.owner }}
+          runtime: ${{ parameters.runtime }}
+          environment: ${{ parameters.environment }}
+          region: ${{ parameters.region }}
+          database: ${{ parameters.database }}
+          cache: ${{ parameters.cache }}
+          observability: ${{ parameters.observability }}
+          apiGateway: ${{ parameters.apiGateway }}
+
+    - id: publish
+      name: Publish to GitHub
+      action: publish:github
+      input:
+        description: ${{ parameters.description }}
+        repoUrl: ${{ parameters.repoUrl }}
+        defaultBranch: 'main'
+
+    - id: register
+      name: Register Component
+      action: catalog:register
+      input:
+        repoContentsUrl: ${{ steps['publish'].output.repoContentsUrl }}
+        catalogInfoPath: '/catalog-info.yaml'
+
+    - id: notify
+      name: Notify User
+      action: notification:send
+      input:
+        recipients: entity
+        entityRefs:
+          - ${{ parameters.owner }}
+        title: 'Production microservice created successfully'
+        info: 'Your microservice "${{ parameters.name }}" has been created with Crossplane infrastructure and CI/CD pipelines'
+        severity: 'success'
+
+  output:
+    links:
+      - title: Repository
+        url: ${{ steps['publish'].output.remoteUrl }}
+      - title: Open in catalog
+        icon: catalog
+        entityRef: ${{ steps['register'].output.entityRef }}
+      - title: View Crossplane Resources
+        icon: kubernetes
+        url: ${{ steps['publish'].output.remoteUrl }}/tree/main/crossplane
+

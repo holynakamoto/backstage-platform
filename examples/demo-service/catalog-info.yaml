@@ -1,11 +1,12 @@
 apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata:
-  name: ${{ values.name | dump }}
-  description: ${{ values.description }}
+  name: demo-service
+  description: A demo Node.js Express website created with Backstage Software Templates
   annotations:
     backstage.io/techdocs-ref: dir:.
 spec:
   type: website
-  owner: ${{ values.owner }}
+  owner: user:guest
   lifecycle: experimental
+

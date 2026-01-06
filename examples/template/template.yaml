@@ -2,12 +2,12 @@ apiVersion: scaffolder.backstage.io/v1beta3
 # https://backstage.io/docs/features/software-catalog/descriptor-format#kind-template
 kind: Template
 metadata:
-  name: example-nodejs-template
-  title: Example Node.js Template
-  description: An example template for the scaffolder that creates a simple Node.js service
+  name: nodejs-website-template
+  title: Node.js Website Template
+  description: A template for creating a Node.js Express website with TechDocs documentation
 spec:
   owner: user:guest
-  type: service
+  type: website
 
   # These parameters are used to generate the input form in the frontend, and are
   # used to gather input data for the execution of the template.
@@ -15,21 +15,31 @@ spec:
     - title: Fill in some steps
       required:
         - name
+        - description
+        - owner
       properties:
         name:
-          title: Name
+          title: Component Name
           type: string
-          description: Unique name of the component
+          description: Unique name of the component (e.g., demo-service)
           ui:autofocus: true
-          ui:options:
-            rows: 5
-    - title: Choose a location
-      required:
-        - repoUrl
+          pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'
+          patternErrorMessage: 'Name must be lowercase and may contain hyphens'
+        description:
+          title: Description
+          type: string
+          description: Brief description of the component
+        owner:
+          title: Owner
+          type: string
+          description: Owner of the component (e.g., user:guest or team:platform)
+          default: user:guest
+    - title: Choose a location (Optional - for GitHub integration)
       properties:
         repoUrl:
           title: Repository Location
           type: string
+          description: GitHub repository URL (optional for local demo)
           ui:field: RepoUrlPicker
           ui:options:
             allowedHosts:
@@ -46,19 +56,19 @@ spec:
         url: ./content
         values:
           name: ${{ parameters.name }}
+          description: ${{ parameters.description }}
+          owner: ${{ parameters.owner }}
 
-    # This step publishes the contents of the working directory to GitHub.
-    # If you or your organization prefer another default branch name over 'main'
-    # you can change that here.
+    # Publish to GitHub if repoUrl is provided
     - id: publish
       name: Publish
       action: publish:github
       input:
-        description: This is ${{ parameters.name }}
+        description: ${{ parameters.description }}
         repoUrl: ${{ parameters.repoUrl }}
         defaultBranch: 'main'
 
-    # The final step is to register our new component in the catalog.
+    # Register the component in the catalog
     - id: register
       name: Register
       action: catalog:register
@@ -66,17 +76,17 @@ spec:
         repoContentsUrl: ${{ steps['publish'].output.repoContentsUrl }}
         catalogInfoPath: '/catalog-info.yaml'
 
-    # Let's notify the user that the template has completed using the Notification action
+    # Notify the user that the template has completed
     - id: notify
       name: Notify
       action: notification:send
       input:
         recipients: entity
         entityRefs:
-          - user:default/guest
-        title: 'Template executed'
-        info: 'Your template has been executed'
-        severity: 'normal'
+          - ${{ parameters.owner }}
+        title: 'Component created successfully'
+        info: 'Your Node.js website component "${{ parameters.name }}" has been created'
+        severity: 'success'
 
   # Outputs are displayed to the user after a successful execution of the template.
   output:

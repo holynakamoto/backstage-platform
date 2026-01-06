@@ -1,0 +1,43 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: payments-service
+  description: Payment processing microservice with Stripe integration
+  annotations:
+    github.com/project-slug: your-org/payments-service
+    backstage.io/techdocs-ref: dir:.
+    crossplane.io/composition: microservice-composition
+  tags:
+    - nodejs
+    - microservice
+    - crossplane
+  links:
+    - url: https://github.com/your-org/payments-service
+      title: GitHub Repository
+      icon: github
+    - url: https://your-org.grafana.net/d/payments-service
+      title: Grafana Dashboard
+      icon: dashboard
+spec:
+  type: service
+  lifecycle: experimental
+  owner: platform-team
+  system: payment-system
+  dependsOn:
+    - resource:default/payments-db
+    - resource:default/payments-cache
+  providesApis:
+    - payments-api
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: payments-api
+  description: Payment processing REST API
+spec:
+  type: openapi
+  lifecycle: experimental
+  owner: platform-team
+  system: payment-system
+  definition:
+    $text: ./openapi.yaml

@@ -1,0 +1,118 @@
+# {{ values.name }}
+
+{{ values.description }}
+
+## Overview
+
+This is a production-ready microservice created using Backstage Software Templates with Crossplane infrastructure provisioning.
+
+**Runtime**: {{ values.runtime }}
+**Environment**: {{ values.environment }}
+**Region**: {{ values.region }}
+
+## Features
+
+- ✅ **Crossplane Infrastructure**: Declarative infrastructure provisioning
+- ✅ **CI/CD Pipeline**: Automated build, test, and deployment
+- ✅ **Kubernetes Deployment**: Production-ready K8s manifests
+- ✅ **Observability**: {% if values.observability %}CloudWatch, Prometheus, distributed tracing{% else %}Basic logging{% endif %}
+- ✅ **Database**: {% if values.database %}RDS PostgreSQL provisioned{% else %}Not configured{% endif %}
+- ✅ **Cache**: {% if values.cache %}ElastiCache Redis provisioned{% else %}Not configured{% endif %}
+
+## Infrastructure
+
+This service uses Crossplane to provision AWS resources:
+
+- **ECS Cluster**: Container orchestration
+- **Application Load Balancer**: Traffic distribution
+- **VPC**: Network isolation
+{% if values.database %}- **RDS PostgreSQL**: Managed database{% endif %}
+{% if values.cache %}- **ElastiCache Redis**: Caching layer{% endif %}
+{% if values.observability %}- **CloudWatch Logs**: Centralized logging{% endif %}
+
+## Getting Started
+
+### Prerequisites
+
+- Kubernetes cluster with Crossplane installed
+- AWS provider configured in Crossplane
+- kubectl configured
+
+### Local Development
+
+{% if values.runtime == 'nodejs' %}
+```bash
+npm install
+npm run dev
+```
+{% elif values.runtime == 'golang' %}
+```bash
+go mod download
+go run cmd/{{ values.name }}/main.go
+```
+{% elif values.runtime == 'python' %}
+```bash
+pip install -r requirements.txt
+python app.py
+```
+{% endif %}
+
+### Deploy Infrastructure
+
+```bash
+# Deploy to dev environment
+kubectl apply -f crossplane/claim-dev.yaml
+
+# Wait for resources to be ready
+kubectl wait --for=condition=Ready compositeresource.claim.apiextensions.crossplane.io/{{ values.name }}-dev --timeout=300s
+```
+
+### Deploy Application
+
+```bash
+kubectl apply -f k8s/
+kubectl rollout status deployment/{{ values.name }}
+```
+
+## API Endpoints
+
+- `GET /health` - Health check
+- `GET /api/v1/status` - Service status
+- `GET /` - Service information
+
+## CI/CD
+
+This repository includes GitHub Actions workflows:
+
+- **CI** (`.github/workflows/ci.yml`): Build, test, security scan, and push Docker image
+- **Deploy** (`.github/workflows/deploy.yml`): Deploy infrastructure and application
+
+## Documentation
+
+See `docs/` directory for:
+- Architecture documentation
+- Runbooks
+- API reference
+
+## Crossplane Resources
+
+- **XRD**: `crossplane/composition.yaml` - Composite Resource Definition
+- **Claims**: `crossplane/claim-*.yaml` - Environment-specific claims
+- **Composition**: Defines AWS resources to provision
+
+## Monitoring
+
+{% if values.observability %}
+- CloudWatch Logs: `/aws/ecs/{{ values.name }}`
+- Prometheus metrics: Available at `/metrics`
+- Distributed tracing: Configured via OpenTelemetry
+{% else %}
+- Basic logging: Standard output
+{% endif %}
+
+## Support
+
+Owner: {{ values.owner }}
+
+For issues or questions, contact the platform team.
+

@@ -58,7 +58,7 @@ proxy:
 techdocs:
   builder: 'local' # Alternatives - 'external'
   generator:
-    runIn: 'docker' # Alternatives - 'local'
+    runIn: 'local' # Alternatives - 'docker'. Local requires Python and mkdocs
   publisher:
     type: 'local' # Alternatives - 'googleGcs' or 'awsS3'. Read documentation for using alternatives.
 
@@ -82,11 +82,27 @@ catalog:
     - type: file
       target: ../../examples/entities.yaml
 
-    # Local example template
+    # Local example templates
     - type: file
       target: ../../examples/template/template.yaml
       rules:
         - allow: [Template]
+    - type: file
+      target: ../../examples/production-microservice-crossplane/template.yaml
+      rules:
+        - allow: [Template]
+
+    # Demo service component (scaffolded example)
+    - type: file
+      target: ../../examples/demo-service/catalog-info.yaml
+      rules:
+        - allow: [Component]
+
+    # Payments service example (production-ready with Crossplane)
+    - type: file
+      target: ../../examples/payments-service/catalog-info.yaml
+      rules:
+        - allow: [Component]
 
     # Local example organizational data
     - type: file

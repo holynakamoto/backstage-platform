@@ -1,0 +1,6 @@
+site_name: demo-service
+site_description: A demo Node.js Express website created with Backstage
+nav:
+  - Home: index.md
+plugins:
+  - techdocs-core

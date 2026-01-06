@@ -1,0 +1,75 @@
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"time"
+)
+
+type HealthResponse struct {
+	Status      string    `json:"status"`
+	Service     string    `json:"service"`
+	Environment string    `json:"environment"`
+	Timestamp   time.Time `json:"timestamp"`
+}
+
+type StatusResponse struct {
+	Service string  `json:"service"`
+	Status  string  `json:"status"`
+	Uptime  float64 `json:"uptime"`
+}
+
+var startTime = time.Now()
+
+func healthHandler(w http.ResponseWriter, r *http.Request) {
+	env := os.Getenv("ENVIRONMENT")
+	if env == "" {
+		env = "dev"
+	}
+
+	response := HealthResponse{
+		Status:      "healthy",
+		Service:     "{{ values.name }}",
+		Environment: env,
+		Timestamp:   time.Now(),
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+func statusHandler(w http.ResponseWriter, r *http.Request) {
+	response := StatusResponse{
+		Service: "{{ values.name }}",
+		Status:  "operational",
+		Uptime:  time.Since(startTime).Seconds(),
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+func main() {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	http.HandleFunc("/health", healthHandler)
+	http.HandleFunc("/api/v1/status", statusHandler)
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{
+			"service":     "{{ values.name }}",
+			"description": "{{ values.description }}",
+			"version":     "1.0.0",
+		})
+	})
+
+	log.Printf("{{ values.name }} server running on port %s", port)
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", port), nil))
+}
+
