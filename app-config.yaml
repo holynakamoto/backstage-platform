@@ -1,6 +1,13 @@
 app:
   title: Scaffolded Backstage App
   baseUrl: http://localhost:3000
+  # Product analytics. PostHog project API keys (phc_...) are public,
+  # client-side keys and are safe to ship in the frontend bundle. Override
+  # the token/host per environment if needed.
+  analytics:
+    posthog:
+      token: phc_vEkygRpsYegjnezAi7rKfoYrs28sDPE7GMFQhViMxj9i
+      host: https://us.posthog.com
 
 organization:
   name: My Company
